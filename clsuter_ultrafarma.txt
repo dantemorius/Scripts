@@ -1,0 +1,122 @@
+Ultrafarma 
+
+HAPROXY {
+
+Utiliza HAPROXY para para o Load Balance
+
+Acesso Via URL para monitorar o status do balancer
+http://187.191.98.50/stats
+
+Dados de acesso:
+U : mandic
+S : Mandic100%
+
+}
+
+
+CLUSTER WEB  {
+
+Cliente possui 5 servers WEB em cluster
+
+DAEMONS {
+Cada server web possui duas Daemons http um para o cluster e um local:
+
+httpd-local - checa o host dentro do httpd.conf se necessário ajusta o host do apache em seguida realiza o restart do apache.
+
+httpd-cluster - copia o httpd.conf para todos os nós do cluster em seguida realiza restart de cada nó chamadno a daemon httpd-local.
+}
+
+
+CSYNC2 {
+
+Referências CSYNC2 { 
+https://gist.github.com/scottsb/cc4a10b57314f63febe2
+http://www.clifford.at/papers/2005/csync2/paper.pdf
+}
+
+Csync2 realiza sincronismo de diretórios específicos que serão setados no arquivo conforme a necessidade do projeto.
+
+Ele possui sua própria chave, um arquivo .key é utilizado para ele e especificano no arquivo padrão.
+
+
+
+Config CSYNC padrão até o momento {
+
+cat /etc/csync2/csync2.cfg {
+group firewalls-data-dir
+ {
+        host CD163820-L-ULTRAFARMA-APP01;
+        host CD163820-L-ULTRAFARMA-APP02;
+        host CD163820-L-ULTRAFARMA-APP03;
+        host CD163820-L-ULTRAFARMA-APP04;
+        host CD163820-L-ULTRAFARMA-APP05;
+        key /etc/csync2/chave_cluster.key;
+#
+#       include /etc/csync2/csync2.cfg;
+#       include /etc/apache;
+#       include %homedir%/bob;
+#       exclude %homedir%/bob/temp;
+#       exclude *~ .*;
+#
+        include /data/www/html/ultrastores.com.br;
+        include /data/www/html/sphinx/etc/sphinx.conf;
+
+# em caso de conflito, tente utilizar o arquivo mais novo
+        #auto younger;
+        auto none;
+
+# faça até três backups dos arquivos modificados
+        backup-directory "/var/backup/csync2";
+        backup-generations 3;
+
+#        logfile "/var/log/csync2_action.log";
+}
+}
+
+}
+
+Agendamento CSYNC2 {
+
+Necessário agendar o csync2 no cron para rodar tempos em tempos.
+
+Ex.: */15 * * * * /usr/sbin/csync2 -x
+
+}
+
+Importante sobre conflitos no CSYNC2 {
+
+Detalhe do csync2, existem alguns casos em uploads de arquivos em massa (1300 arquivos+) podem gerar inconsistência falso positivo para isso pode ser debugado reatlizando o teste:
+
+# Função -M do Csyn2 lista os conflitos
+/usr/sbin/csync2 -M
+
+# Função -f força o node ser o arquivo principal
+/usr/sbin/csync2 -f /caminho/do/arquivo/conflitado
+
+
+# Script que resolve conflitos em geral, sendo falso ou não. Ele faz isso forçando o arquivo deste host a ser o principal, sendo assim este script deve ser colocado apenas em um dos nós(de preferência onde realiza o UPLOAD de FTP):
+
+/etc/csync2/script/resolve_conflito.sh {
+#!/bin/bash
+
+# Função -M do Csyn2 lista os conflitos
+# Função -f força o node ser o arquivo principal
+
+/usr/sbin/csync2 -M | awk '{print $4}' | while read fail; do /usr/sbin/csync2 -f $fail; done
+
+}
+
+Agendando script no cron {
+crontab -e  
+
+*/15 * * * * /etc/csync2/script/resolve_conflito.sh 
+
+}
+
+}
+
+}
+
+
+}
+

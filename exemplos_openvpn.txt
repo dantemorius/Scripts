@@ -1,0 +1,116 @@
+Rotas OpenVPN:
+
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+10.8.0.2        0.0.0.0         255.255.255.255 UH    0      0        0 tun0
+10.53.0.0       0.0.0.0         255.255.255.0   U     0      0        0 eth1
+10.8.0.0        10.8.0.2        255.255.255.0   UG    0      0        0 tun0
+192.168.46.0    10.8.0.2        255.255.255.0   UG    0      0        0 tun0
+177.70.96.0     0.0.0.0         255.255.252.0   U     0      0        0 eth0
+169.254.0.0     0.0.0.0         255.255.0.0     U     1003   0        0 eth1
+169.254.0.0     0.0.0.0         255.255.0.0     U     1004   0        0 eth0
+0.0.0.0         177.70.96.1     0.0.0.0         UG    0      0        0 eth0
+
+ip a:
+30: tun0: <POINTOPOINT,MULTICAST,NOARP,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UNKNOWN qlen 100
+    link/[65534]
+    inet 10.8.0.1 peer 10.8.0.2/32 scope global tun0
+
+
+10.8.0.2 = Gateway OpenVPN
+10.53.0.0 = Rede interna Mandic para gateway OpenVPN (NÃO SETAR ROTA)
+10.8.0.0 - Rede VPN para gateway OpenVPN
+
+
+Editar /etc/openvpn/server.conf e descomentar as linhas:
+client-config-dir /etc/openvpn/ccd
+route 192.168.46.0 255.255.255.0 10.8.0.2
+
+Criar arquivo:
+/etc/openvpn/ccd/site2site (site2site substituir pelo nome do certificado)
+#ifconfig-push 10.8.0.1 10.8.0.2
+iroute 192.168.46.0 255.255.255.0
+
+Criar repositório: nux-misc.repo
+
+[nux-misc]
+name=Nux Misc
+baseurl=http://li.nux.ro/download/nux/misc/el6/x86_64/
+enabled=0
+gpgcheck=1
+gpgkey=http://li.nux.ro/download/nux/RPM-GPG-KEY-nux.ro
+
+
+yum --enablerepo=nux-misc install openresolv -y
+
+touch /etc/openvpn/update-resolv.conf.sh
+
+echo '#!/bin/bash
+#
+# Parses DHCP options from openvpn to update resolv.conf
+# To use set as 'up' and 'down' script in your openvpn *.conf:
+# up /etc/openvpn/update-resolv-conf
+# down /etc/openvpn/update-resolv-conf
+#
+# Used snippets of resolvconf script by Thomas Hood <jdthood@yahoo.co.uk>
+# and Chris Hanson
+# Licensed under the GNU GPL.  See /usr/share/common-licenses/GPL.
+# 07/2013 colin@daedrum.net Fixed intet name
+# 05/2006 chlauber@bnc.ch
+#
+# Example envs set from openvpn:
+# foreign_option_1='dhcp-option DNS 193.43.27.132'
+# foreign_option_2='dhcp-option DNS 193.43.27.133'
+# foreign_option_3='dhcp-option DOMAIN be.bnc.ch'
+# foreign_option_4='dhcp-option DOMAIN-SEARCH bnc.local'
+
+## You might need to set the path manually here, i.e.
+RESOLVCONF=$(type -p resolvconf)
+
+case $script_type in
+
+up)
+  for optionname in ${!foreign_option_*} ; do
+    option="${!optionname}"
+    echo $option
+    part1=$(echo "$option" | cut -d " " -f 1)
+    if [ "$part1" == "dhcp-option" ] ; then
+      part2=$(echo "$option" | cut -d " " -f 2)
+      part3=$(echo "$option" | cut -d " " -f 3)
+      if [ "$part2" == "DNS" ] ; then
+        IF_DNS_NAMESERVERS="$IF_DNS_NAMESERVERS $part3"
+      fi
+      if [[ "$part2" == "DOMAIN" || "$part2" == "DOMAIN-SEARCH" ]] ; then
+        IF_DNS_SEARCH="$IF_DNS_SEARCH $part3"
+      fi
+    fi
+  done
+  R=""
+  if [ "$IF_DNS_SEARCH" ]; then
+    R="search "
+    for DS in $IF_DNS_SEARCH ; do
+      R="${R} $DS"
+    done
+  R="${R}
+"
+  fi
+
+  for NS in $IF_DNS_NAMESERVERS ; do
+    R="${R}nameserver $NS
+"
+  done
+  #echo -n "$R" | $RESOLVCONF -x -p -a "${dev}"
+  echo -n "$R" | $RESOLVCONF -x -a "${dev}.inet"
+  ;;
+down)
+  $RESOLVCONF -d "${dev}.inet"
+  ;;
+esac
+
+# Workaround / jm@epiclabs.io
+# force exit with no errors. Due to an apparent conflict with the Network Manager
+# $RESOLVCONF sometimes exits with error code 6 even though it has performed the
+# action correctly and OpenVPN shuts down.
+exit 0' > /etc/openvpn/update-resolv.conf.sh
+
+chmod +x /etc/openvpn/update-resolv.conf.sh

@@ -1,0 +1,382 @@
+#!/bin/bash
+
+# ===================================== #
+# MANDIC Cloud Solutions                #
+#                                       #
+# Linux Template Wipe Script            #
+#                                       #
+# Supports: Debian/Ubuntu               #
+#           RHEL/CentOS/Oracle          #
+#           SuSE/openSuSE               #
+#                                       #
+# Version: 2.8                          #
+# Last Rev: Sep 5th 2013                #
+#                                       #
+# Comment: Fixed 'clean_root_data'      #
+#                                       #
+# Author                                #
+# --------------                        #
+# Bruno Oliveira                        #
+#                                       #
+# Notes                                 #
+# --------------                        #
+# SHOULD BE RUN AS:                     #
+# . <PATH>/mandic_linux.wipe.sh         #
+# ===================================== #
+
+### Stores the mainstream DIRs for logs and keys ###
+LOG_DIR="/var/log"
+SSH_KEYS_DIR="/etc/ssh"
+
+### Files to be searched to detect the distro and set the var $DISTRO ###
+DEBIAN_FLAG="/etc/debian_version"
+RHEL_FLAG="/etc/redhat-release"
+SUSE_FLAG="/etc/SuSE-release"
+
+### Not to be touched ###
+DISTRO=""
+
+
+#### Looks up for the Linux Distro ####
+
+function lookup_distro() {
+        if [[ -e $DEBIAN_FLAG ]]; then
+           echo "Running system: ### Debian-based Linux ###"
+           DISTRO="debian"
+        elif [[ -e $RHEL_FLAG ]]; then
+           echo "Running system: ### RHEL-based Linux ###"
+           DISTRO="rhel"
+        elif [[ -e $SUSE_FLAG ]]; then
+           echo "Running system: ### SuSE-based Linux ###"
+           DISTRO="suse"
+        else
+           echo "Running system: ### Unknown ###"
+        fi
+}
+
+#### Cleans up all system, user and archived logs ####
+
+function clean_logs() {
+
+        echo "Cleaning up all system, user and archived logs in: $LOG_DIR/"
+        for file in $(find $LOG_DIR -maxdepth 9 -type f); do
+           if [[ $(echo $file |egrep '.*(tar|gz|bz2|[0-9])$') != "" ]]; then
+              rm -f $file
+           else
+              echo "" > $file
+           fi
+        done
+        echo
+}
+
+#### Cleans up all temporary files ####
+
+function clean_temp_files() {
+
+        echo "Cleaning up temporary files"
+        rm -Rfv /tmp/{,.}[a-Z]*
+        rm -Rfv /var/tmp/{,.}[a-Z]*
+        rm -Rfv /etc/udev/rules.d/70-persistent-net.rules
+        echo
+}
+
+### Cleans up all pairs of public/private SSH keys ###
+
+function clean_ssh_keys() {
+
+        echo "Cleaning up pairs of public/private ssh keys (if exists)"
+        rm -f $SSH_KEYS_DIR/*key{,s}{,.pub}
+
+        echo "Generating a 2048-bit RSA ssh public/private keypair"
+        ssh-keygen -b 2048 -t rsa -N '' -f $SSH_KEYS_DIR/ssh_host_rsa_key -q
+
+        echo "Setting up RSA keys in $SSH_KEYS_DIR/sshd_config file"
+        HOSTKEY_LINE=$(egrep -n 'HostKeys for protocol' $SSH_KEYS_DIR/sshd_config|cut -d\: -f1)
+        HOSTKEY_LINE=$((HOSTKEY_LINE+1))
+        sed -r 's/(#|)HostKey .*//g' -i $SSH_KEYS_DIR/sshd_config
+        sed "$HOSTKEY_LINE c HostKey $SSH_KEYS_DIR/ssh_host_rsa_key" -i $SSH_KEYS_DIR/sshd_config
+        echo
+}
+
+#### Cleans up the package cache for distro: $DISTRO-like ####
+
+function clean_package() {
+
+        echo "Cleaning up package cache for distro: $DISTRO-like"
+        if [[ $DISTRO == "debian" ]]; then
+           echo "Cleaning up Debian-based Linux APT cache"
+           aptitude autoclean
+           aptitude clean
+           apt-get clean
+        elif [[ $DISTRO == "rhel" ]]; then
+           echo "Cleaning up RHEL-based Linux YUM cache"
+           yum clean all
+        elif [[ $DISTRO == "suse" ]]; then
+           echo "Cleaning up SuSE-based Linux ZYPPER cache"
+           zypper cleanlocks
+           zypper clean
+        else
+           echo "Distro not identified. Specify as parameter: 'debian', 'rhel' or 'suse'"
+        fi
+        echo
+}
+
+### update Distro ###
+
+function update_distro(){
+        echo "Updating packages for distro: $DISTRO-like"
+        if [[ $DISTRO == "debian" ]]; then
+           apt-get update
+        elif [[ $DISTRO == "rhel" ]]; then
+           yum update -y
+        elif [[ $DISTRO == "suse" ]]; then
+           zypper up
+        else
+           echo "Distro not identified. Specify as parameter: 'debian', 'rhel' or 'suse'"
+        fi
+        echo
+}
+
+
+### Resets the hostname of the servers, so it can be acquired via DHCP during the boot ###
+
+function clean_hostname() {
+
+        echo "Erasing hostname..."
+        if [[ $DISTRO == "debian" ]]; then
+           echo "" > /etc/hostname
+        elif [[ $DISTRO == "rhel" ]]; then
+           cat /etc/sysconfig/network| grep -iv hostname > /etc/sysconfig/network.tmp
+           echo "HOSTNAME=" >> /etc/sysconfig/network.tmp
+           mv -f /etc/sysconfig/network.tmp /etc/sysconfig/network
+        elif [[ $DISTRO == "suse" ]]; then
+           echo "" > /etc/HOSTNAME
+        fi
+        echo
+}
+
+### Cleans up 'root' user data ###
+
+function clean_root_data() {
+
+        echo "Cleaning up 'root' user data"
+        ROOT_DIR=/root
+
+        for file in $(ls -a $ROOT_DIR); do
+           rm -Rf $ROOT_DIR/$file
+        done
+
+        rebuild_root_bash
+
+        echo "Erasing 'root' password. Forcing password change at next logon"
+        usermod -p '' root
+        chage -d 0 root
+        echo
+}
+
+### Rebuilds .bashrc and .bash_profile ###
+
+function rebuild_root_bash() {
+
+        echo "Rebuilding 'root' .bash* files"
+        echo "# .bashrc"                                        >  /root/.bashrc
+        echo ""                                                 >> /root/.bashrc
+        echo "# User specific aliases and functions"            >> /root/.bashrc
+        echo ""                                                 >> /root/.bashrc
+        echo "alias rm='rm -i'"                                 >> /root/.bashrc
+        echo "alias cp='cp -i'"                                 >> /root/.bashrc
+        echo "alias mv='mv -i'"                                 >> /root/.bashrc
+        echo ""                                                 >> /root/.bashrc
+        echo "# Source global definitions"                      >> /root/.bashrc
+        echo "if [ -f /etc/bashrc ]; then"                      >> /root/.bashrc
+        echo "  . /etc/bashrc"                                  >> /root/.bashrc
+        echo "fi"                                               >> /root/.bashrc
+
+        echo "# .bash_profile"                                  >  /root/.bash_profile
+        echo ""                                                 >> /root/.bash_profile
+        echo "# Get the aliases and functions"                  >> /root/.bash_profile
+        echo "if [ -f ~/.bashrc ]; then"                        >> /root/.bash_profile
+        echo "  . ~/.bashrc"                                    >> /root/.bash_profile
+        echo "fi"                                               >> /root/.bash_profile
+        echo ""                                                 >> /root/.bash_profile
+        echo "# User specific environment and startup programs" >> /root/.bash_profile
+        echo ""                                                 >> /root/.bash_profile
+        echo "PATH=\$PATH:\$HOME/bin"                           >> /root/.bash_profile
+        echo ""                                                 >> /root/.bash_profile
+        echo "export PATH"                                      >> /root/.bash_profile
+
+        echo "# ~/.bash_logout"                                 >  /root/.bash_logout
+        echo ""                                                 >> /root/.bash_logout
+
+        echo ""                                                 >  /root/.bash_history
+
+        echo "Fixing and guaranteeing the file mods and ownerships"
+        chown root.root /root/.*
+        chmod 644       /root/.*
+        chmod 600       /root/.bash_history
+        chmod 550       /root/.
+        chmod 555       /root/..
+}
+
+
+### Enables the use of '' (null) password for SuSE Linux ###
+
+function enable_null_pwd_login() {
+
+        echo "Enabling the use of '' (null) password for SuSE Linux"
+        cat /etc/pam.d/common-auth |egrep '^#'                                   > /etc/pam.d/common-auth.tmp
+        echo "auth      required        pam_env.so"                             >> /etc/pam.d/common-auth.tmp
+        echo "auth      sufficient      pam_unix2.so nullok try_first_pass"     >> /etc/pam.d/common-auth.tmp
+        echo "auth      requisite       pam_succeed_if.so"                      >> /etc/pam.d/common-auth.tmp
+        echo "auth      required        pam_deny.so"                            >> /etc/pam.d/common-auth.tmp
+
+        cat /etc/pam.d/common-auth.tmp > /etc/pam.d/common-auth
+        rm -f /etc/pam.d/common-auth.tmp
+        echo
+}
+
+### Enable the 'root' user login via ssh ###
+
+function enable_ssh_root_login() {
+
+        echo "Enabling the 'root' user login via SSH"
+        if [[ $(grep 'PermitRootLogin yes' $SSH_KEYS_DIR/sshd_config) != "" ]]; then
+           sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' $SSH_KEYS_DIR/sshd_config
+        else
+           echo "PermitRootLogin yes" >> $SSH_KEYS_DIR/sshd_config
+        fi
+        echo
+}
+
+### Erases the bash history ###
+
+function clean_history() {
+
+        echo "Erasing bash history"
+        history -c
+        echo
+}
+
+
+### Loading new settings ###
+
+function reload_settings() {
+
+        echo "Reloading profile settings..."
+        . /etc/profile
+
+        if [ -f /etc/bashrc ]; then
+           . /etc/bashrc
+        else
+           . /etc/bash.bashrc
+        fi
+
+        echo
+}
+
+### Displays the help message for when the user inputs an invalid option manually ###
+
+function show_help() {
+
+   echo
+   echo "Syntax: <PATH>/mandic_linux_wipe.sh [debian|rhel|suse]"
+   echo
+   echo "You have to specify if your Linux distro is either Debian, Red Hat or SuSE-based"
+   echo
+   echo "For Debian-based Linux'es, use:"
+   echo "       <PATH>/mandic_linux_wipe.sh debian"
+   echo
+   echo "For Red Hat-based Linux'es:"
+   echo "       <PATH>/mandic_linux_wipe.sh rhel"
+   echo
+   echo "For SuSE-based Linux'es:"
+   echo "       <PATH>/mandic_linux_wipe.sh suse"
+   echo
+}
+
+### CALLBACK TO API FINISH TEMPLATE ###
+
+function callback_api() {
+    HOSTNAME=`hostname`
+    curl -X 'PUT' http://10.2.2.163:8080/kratos/rest/finish/virtualmachine/$HOSTNAME
+
+}
+
+
+
+#### Call each of the functions of cleaning up ####
+
+clear
+echo "Looking up Linux Distro..."
+echo
+lookup_distro
+
+if [[ $1 != "" ]]; then
+
+   DISTRO_INPUT=$1
+   if [[ $DISTRO_INPUT == 'debian' || $DISTRO_INPUT == 'rhel' || $DISTRO_INPUT == 'suse' ]]; then
+
+      echo "Your input: ### $DISTRO_INPUT-based Linux ###"
+
+        if [[ $DISTRO_INPUT != $DISTRO ]]; then
+
+           echo
+           echo "--------------------------------------------------------------"
+           echo "WARNING: Your system was detected as: ### $DISTRO Linux ###"
+           echo "WARNING: but you have input it as: ### $DISTRO_INPUT Linux ###"
+           echo "WARNING: How do you want to proceed? "
+           echo "--------------------------------------------------------------"
+           echo
+           echo "1. Proceed using your input: $DISTRO_INPUT-based Linux (errors might occur)"
+
+           if [[ $DISTRO != "" ]]; then
+                echo "2. Proceed as the system identified: $DISTRO-based Linux"
+           fi
+
+           echo "0. Abort script"
+
+           OPTION=""
+
+           while [[ $OPTION < 1 || $OPTION > 2 ]]; do
+                echo
+                echo -n "Option: "
+                read OPTION
+
+                if [[ $OPTION == "1" ]]; then
+                   DISTRO=$DISTRO_INPUT
+                elif [[ $OPTION == "0" ]]; then
+                   exit 0
+                fi
+           done
+
+           echo
+           echo "Assuming distro: ### $DISTRO Linux ###"
+           echo "Proceeding..."
+        fi
+
+   else
+        echo "(Invalid) Your input: ### $DISTRO_INPUT ###"
+        show_help
+        exit -1
+   fi
+
+fi
+
+echo
+echo "Falling back to root dir: /"
+   cd /
+   update_distro
+   clean_logs
+   clean_temp_files
+   clean_ssh_keys
+   clean_package $DISTRO
+   clean_hostname $DISTRO
+   clean_root_data
+   enable_ssh_root_login
+   clean_history
+
+   if [[ $DISTRO == "suse" ]]; then enable_null_pwd_login; fi
+   reload_settings
+ echo "Done!"
+   callback_api
+echo

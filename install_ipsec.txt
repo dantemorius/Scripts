@@ -1,0 +1,143 @@
+#!/bin/bash
+#
+###############################
+# SCRIPT INSTALACAO VPN IPSEC #
+#                             #
+# AUTHOR:  LEONARDO ARAUJO    #
+# CRIACAO: 10 MAR 2015        #
+###############################
+
+clear
+echo "
+ __  __       _____ _____   _____ ______ _____
+|  \/  |  _  |_   _|  __ \ / ____|  ____/ ____|
+| \  / | (_)   | | | |__) | (___ | |__ | |
+| |\/| |       | | |  ___/ \___ \|  __|| |
+| |  | |  _   _| |_| |     ____) | |___| |____
+|_|  |_| (_) |_____|_|    |_____/|______\_____|
+"
+
+
+# INSTALACAO DE PACOTES
+wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm
+rpm -Uvh epel-release-latest-6.noarch.rpm --force
+
+yum update -y
+yum install openswan.x86_64 openswan-doc.x86_64 NetworkManager-openswan.x86_64 pwgen.x86_64 -y
+
+clear
+
+# VARIAVEL
+PATH="/etc/ipsec.d"
+SENHA=`pwgen -Byns 10 1`
+IPTABLES='$IPTABLES'
+
+# INTERACOES
+echo -n " Informe o IP VIP: "
+read VIP
+export VIP
+
+echo -n " Informe o RANGE BACKEND: "
+read BACKEND
+export BACKEND
+
+echo -n " Informe o NOME do Cliente: "
+read NOME
+export NOME
+
+echo -n " Informe o IP de Internet do Cliente: "
+read IPCLIENTE
+export IPCLIENTE
+
+echo -n " Informe o RANGE BACKEND do Cliente: "
+read BACKENDCLIENTE
+export BACKENDCLIENTE
+
+
+# ARQUIVOS DE CONFIGURACAO
+echo "# Please place your own config files in /etc/ipsec.d/ ending in .conf
+
+version 2.0     # conforms to second version of ipsec.conf specification
+
+# basic configuration
+config setup
+        listen=$VIP
+        protostack=netkey
+        nat_traversal=yes
+        virtual_private=
+        oe=off
+        plutostderrlog=/var/log/pluto.log
+
+
+#You may put your configuration (.conf) file in the "/etc/ipsec.d/" and uncomment this.
+include /etc/ipsec.d/*.conf
+" > /etc/ipsec.conf
+
+echo "conn $NOME
+ type=tunnel
+ left=$VIP
+ leftsubnet=$BACKEND
+
+# Funcao MultiLink
+# right=%any
+
+# DADOS REDE CLIENTE
+ right=$IPCLIENTE
+ rightsubnet=$BACKENDCLIENTE
+
+# PHASE1 de AUTENTICACAO
+ ike=3des-sha1;modp1024
+
+# PHASE2 de AUTENTICACAO
+ phase2alg=3des-sha1;modp1024
+ keyexchange=ike
+ ikelifetime=28800s
+ keylife=1800s
+ dpddelay=10
+ dpdtimeout=5
+ dpdaction=restart_by_peer
+ authby=secret
+ auto=start
+ pfs=no
+" > $PATH/vpn-$NOME.conf
+
+echo "$VIP $IPCLIENTE : PSK '$SENHA'" > $PATH/vpn-$NOME.secrets
+
+# REGRAS DE FIREWALL
+
+$(which iptables) -I INPUT -p esp -j ACCEPT
+$(which iptables) -I INPUT -p udp --dport 500 -j ACCEPT
+$(which iptables) -I INPUT -p tcp --dport 500 -j ACCEPT
+$(which iptables) -I INPUT -p udp --dport 4500 -j ACCEPT
+$(which iptables) -I INPUT -s $IPCLIENTE -j ACCEPT
+$(which iptables) -I FORWARD -s $IPCLIENTE -j ACCEPT
+$(which iptables) -I FORWARD -s $BACKENDCLIENTE -d $BACKEND -j ACCEPT
+$(which iptables) -I FORWARD -s $BACKEND -d $BACKENDCLIENTE -j ACCEPT
+$(which iptables) -t nat -I POSTROUTING -s $BACKEND -d $BACKENDCLIENTE -j ACCEPT
+$(which iptables) -t nat -I POSTROUTING -s $BACKENDCLIENTE -d $BACKEND -j ACCEPT
+
+
+echo 0 > /proc/sys/net/ipv4/conf/default/rp_filter
+echo 0 > /proc/sys/net/ipv4/conf/lo/rp_filter
+echo 0 > /proc/sys/net/ipv4/conf/eth0/rp_filter
+echo 0 > /proc/sys/net/ipv4/conf/eth1/rp_filter
+
+
+echo ""
+echo "### ADICIONAR AS REGRAS ABAIXO NO SCRIPT DE FIREWALL ###
+
+## REGRAS IPSEC
+##################################################################
+$IPTABLES -A INPUT -p esp -j ACCEPT
+$IPTABLES -A INPUT -p udp --dport 500 -j ACCEPT
+$IPTABLES -A INPUT -p tcp --dport 500 -j ACCEPT
+$IPTABLES -A INPUT -p udp --dport 4500 -j ACCEPT
+$IPTABLES -A INPUT -s $IPCLIENTE -j ACCEPT
+$IPTABLES -A FORWARD -s $IPCLIENTE -j ACCEPT
+$IPTABLES -A FORWARD -s $BACKENDCLIENTE -d $BACKEND -j ACCEPT
+$IPTABLES -A FORWARD -s $BACKEND -d $BACKENDCLIENTE -j ACCEPT
+$IPTABLES -t nat -A POSTROUTING -s $BACKEND -d $BACKENDCLIENTE -j ACCEPT
+$IPTABLES -t nat -A POSTROUTING -s $BACKENDCLIENTE -d $BACKEND -j ACCEPT
+###################################################################
+
+"

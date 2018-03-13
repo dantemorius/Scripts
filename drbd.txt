@@ -1,0 +1,209 @@
+=========================
+===  INSTALAÇÃO DRBD  ===
+=========================
+
+Desabilitar o Selinux (nos dois nós)
+
+
+1 – Instalação de pacotes deve ser feito nos dois nós  (o repositório epel já deve estar configurado)
+	# rpm -ivh http://elrepo.org/elrepo-release-6-5.el6.elrepo.noarch.rpm
+	# yum install drbd83-utils kmod-drbd83 -y
+	
+Repositorio com DRBD mais atualizado:  
+	rpm -ivh http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
+	yum install drbd84-utils.x86_64 kmod-drbd84.x86_64 drbd.x86_64 drbd-kmdl-2.6.32-220.23.1.el6.x86_64
+
+
+
+2 - Subindo o módulo do DRBD (nos dois servidores)
+# modprobe drbd
+
+
+
+3 – Inserir arquivo de configuração /etc/drbd.conf no primeiro servidor (alterar as informações de hostname e IPs)
+
+global {
+    usage-count no;
+}
+resource r0 {
+  protocol C;
+  startup {
+    wfc-timeout  30;
+    degr-wfc-timeout 120;
+ }
+  net {
+    # the encryption part can be omitted when using a dedicated link for DRBD only:
+    # cram-hmac-alg sha1;
+    # shared-secret anysecrethere123;
+    #allow-two-primaries;
+  }
+  disk {
+    on-io-error   detach;
+  }
+  syncer {
+    rate 120M;
+  }
+  on CD119252-linux-centos-6-64b-base-sx-9708{
+    device     /dev/drbd0;
+    disk       /dev/xvdb1;
+    address    187.33.2.239:7788;
+    meta-disk  internal;
+  }
+  on CD89749-linux-centos-6-64b-base-sx-23775{
+    device     /dev/drbd0;
+    disk       /dev/xvdb1;
+    address    187.33.2.240:7788;
+    meta-disk  internal;
+  }
+}
+
+
+
+4 - Copiando o arquivo /etc/drbd.conf para o nó secundário
+scp /etc/drbd.conf root@187.33.2.240:/etc
+
+
+5 - Criando os metadados no recurso r0 (nos dois nós)
+
+Obs.: Limpar o disco ( dd if=/dev/zero of=/dev/sda4 bs=1M count=128) 
+drbdadm create-md r0
+
+**Limpar os dados do diretório /data/mysql no servidor 2
+** Restartar o drbd nos dois servidores
+** Ir para passo 10
+
+
+###########################
+### Caso gere este Erro ###
+###########################
+
+[root@web02 ~]# drbdadm create-md r0
+Device '0' is configured!
+Command 'drbdmeta 0 v08 /dev/sda4 internal create-md' terminated with exit code 20
+drbdadm create-md r0: exited with code 20
+
+Executar: drbdadm detach r0
+	  drbdadm disconnect r0
+
+Execute novamente o 
+	  drbdadm create-md r0
+
+
+
+
+
+6 - Atachando o DRBD ao recurso r0 (nos dois nós)
+drbdadm attach r0
+
+
+7 - Sincronizando o DRBD ao recurso r0 (nos dois nós)
+drbdadm syncer r0
+
+8 - Conectando o DRBD ao recurso r0 (nos dois nós)
+drbdadm connect r0
+
+Na versão 4, usar /etc/init.d/drbd restart
+
+
+9 - Verificando o processo do DRBD (Verificar se existe Secondary/Secondary)
+cat /proc/drbd
+
+
+10 - Definindo quem é o nó primário (o comando abaixo destrói os dados) (somente no nó primário)
+drbdadm -- --overwrite-data-of-peer primary r0
+
+
+
+11 - Verificando o servidor primário e o secundário (aguardar a cópia)
+watch -n1 cat /proc/drbd
+
+
+12 - Verificando se esta tudo OK (estando no nó Primário)
+drbdadm role all
+
+Resultado: Primary/Secondary
+
+
+13 - Verificando se esta tudo OK (estando no nó Secundário)
+drbdadm role all
+
+Resultado: Secondary/Primary
+
+
+14 - Verificando se está conectado ao nó 2 (nos dois servidores)
+drbdadm cstate r0
+
+Resultado: Connected
+
+
+15 - Verificando a atualização dos discos
+drbdadm dstate r0
+
+Resultado: UpToDate/UpToDate
+
+
+
+16 - Formatando e montando o disco (estando no nó primário)
+mkfs.ext4 /dev/drbd0
+mkdir /data
+mount –t ext4 /dev/drbd0 /data
+touch /data/teste1
+ls -lah /data
+umount /data
+
+
+17 - Passando o nó Primario (fisicamente) para Secundário (estando no nó primário)
+drbdadm secondary r0
+drbdadm role r0
+
+Resultado: Secondary/Secondary
+
+
+18 - Passando o nó Secundário (fisicamente) para Primário (estando no nó secundário)
+drbdadm primary r0
+drbdadm role r0
+
+
+19 - Verificando os dados (estando no nó secundário)
+mkdir /data
+mount /dev/drbd0 /data
+ls -lah /data/
+umount /data
+
+
+20 - Voltar a situação correta, ou seja, o Primário (fisicamente) vai ser o Primário e o Secundário (fisicamente) vai ser o Secundário.
+drbdadm secondary r0 --> estando no secundário
+drbdadm primary r0 --> estando no primário
+
+
+21 – Incluir no fstab a configuração de montagem do drbd (nos dois nós):
+
+vim /etc/fstab 
+
+/dev/drbd0              /data                   ext3    noauto          0 0
+
+
+
+
+
+===================================================================================
+===================================================================================
+
+DISASTER RECOVERY
+http://www.drbd.org/users-guide/s-node-failure.html
+
+drbdadm secondary r0
+drbdadm -- --discard-my-data connect r0
+
+drbdadm connect resource
+
+=====================================================================================
+=====================================================================================
+
+DESTRUIR OS DADOS DO NÓ QUE FALHOU
+# drbdadm secondary r0
+# drbdadm disconnect r0
+# drbdadm -- --discard-my-data connect r0
+
+======================================================================================
+======================================================================================

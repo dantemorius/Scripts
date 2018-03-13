@@ -1,0 +1,50 @@
+#!/bin/bash
+
+iptables(){
+echo ""
+echo -e "\\033[1;39m \\033[1;32mConfs do IPTABLES\\033[1;39m \\033[1;0m"
+echo ""
+
+if [ -s /etc/sysconfig/iptables ] ; then
+echo "o arquivo /etc/sysconfig/iptables existe, adicionando ao Run BOOK"
+
+echo "h2. IPTABLES" >> /root/runbook/iptables.txt
+echo "" >> /root/runbook/iptables.txt
+echo "Arquivo /etc/sysconfig/iptables" >>  /root/runbook/iptables.txt
+echo "" >> /root/runbook/iptables.txt
+echo "{expand:Confs do IPTABLES}" >> /root/runbook/iptables.txt
+cat /etc/sysconfig/iptables >> /root/runbook/iptables.txt
+echo "{expand}" >> /root/runbook/iptables.txt
+
+else
+echo "o arquivo /etc/sysconfig/iptables Não Existe !!!!!!!!"
+
+fi
+
+sleep 1
+}
+
+mysql_ubuntu(){
+echo ""
+echo -e "\\033[1;39m \\033[1;32mConfs do MySQL\\033[1;39m \\033[1;0m"
+echo ""
+
+if [ -s /etc/mysql/my.cnf ] ; then
+echo "o arquivo /etc/mysql/my.cnf existe, adicionando ao Run BOOK"
+
+echo "h2. MySQL" >> /root/runbook/my.cnf
+echo "" >> /root/runbook/my.cnf
+echo "{expand:Confs do MySQL}" >> /root/runbook/my.cnf
+cat /etc/mysql/my.cnf >> /root/runbook/my.cnf
+echo "{expand}" >> /root/runbook/my.cnf
+sed -i 's/#/\\#/g' /root/runbook/my.cnf
+else
+echo "o arquivo /etc/mysql/my.cnf Não Existe !!!!!!!!"
+
+fi
+
+sleep 1
+}
+
+iptables
+mysql_ubuntu

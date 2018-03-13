@@ -1,0 +1,31 @@
+New Relic:
+
+https://rpm.newrelic.com
+
+-> Selecionar Versão do New Relic
+
+Baixar RPM:
+rpm -Uvh http://yum.newrelic.com/pub/newrelic/el5/x86_64/newrelic-repo-5-3.noarch.rpm
+
+Instalar Pacotes:
+yum install newrelic-php5 newrelic-daemon newrelic-sysmond newrelic-php5-common -y
+
+**Agente PHP é multiversão
+
+Instalar linha de comando do PHP:
+yum install php70-cli
+
+Instalar agente NewRelic:
+newrelic-install install
+
+- Setar Licença
+nrsysmond-config --set license_key=6ccfbcdf7311c9c8ebbfbda0312d20a5eca6f282
+
+- Criar arquivo de configuração:
+cp /etc/newrelic/newrelic.cfg.template /etc/newrelic/newrelic.cfg
+
+- Reiniciar a serviços (Apache/PHP-FPM/NGINX)
+
+- Iniciar serviços do NEWRELIC
+/etc/init.d/newrelic-daemon restart
+/etc/init.d/newrelic-sysmond restart

@@ -1,0 +1,44 @@
+##Instalação Mysql CentOS 7
+##Definindo Hostname 
+hostnamectl set-hostname CD123470-L-RBX-WEB-DB --static
+
+##Instalação:
+yum install mysql-server -y
+chown -R mysql /var/lib/mysql
+chgrp -R mysql /var/lib/mysql
+
+##Configurando usuário de login
+##Digitar comando e selecionar as alternativas conforme abaixo:
+==================================================================
+mysql_secure_installation
+
+Enter current password for root (enter for none):
+OK, successfully used password, moving on...
+
+Setting the root password ensures that nobody can log into the MySQL
+root user without the proper authorisation.
+
+Set root password? [Y/n] Y
+New password:
+Re-enter new password:
+Password updated successfully!
+Reloading privilege tables..
+ ... Success!
+
+
+Remove anonymous users? [Y/n] y
+ ... Success!
+
+
+Disallow root login remotely? [Y/n] n
+ ... skipping.
+
+Remove test database and access to it? [Y/n] n
+ ... skipping.
+
+
+Reload privilege tables now? [Y/n] y
+ ... Success!
+==================================================================
+
+##Editar /root/.my.cnf e definir a mesma senha definida no passo anterior.

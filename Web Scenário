@@ -1,0 +1,44 @@
+pedidos.tupperware.com.br/abaete
+pedidos.tupperware.com.br/altoastral
+pedidos.tupperware.com.br/avanco
+pedidos.tupperware.com.br/cav
+pedidos.tupperware.com.br/ciranda
+pedidos.tupperware.com.br/constelacao
+pedidos.tupperware.com.br/criativa
+pedidos.tupperware.com.br/diamantes
+pedidos.tupperware.com.br/espetaculo
+pedidos.tupperware.com.br/fantastica
+pedidos.tupperware.com.br/magma
+pedidos.tupperware.com.br/mirante
+pedidos.tupperware.com.br/nacaonordestina
+pedidos.tupperware.com.br/orion
+pedidos.tupperware.com.br/planalto
+pedidos.tupperware.com.br/premier
+pedidos.tupperware.com.br/progresso
+pedidos.tupperware.com.br/riodejaneiro
+pedidos.tupperware.com.br/show
+pedidos.tupperware.com.br/sucesso
+pedidos.tupperware.com.br/tupper
+pedidos.tupperware.com.br/tuppernet
+pedidos.tupperware.com.br/zenite
+}
+
+Vá ao host desejado.
+- Clique e em hosts ou triggers
+- Clique em "web scenários" -> Botão "Create Scenario" (perto do botão Search).
+
+[Guia Scenario]
+name: url
+http service
+300
+ie 6.0
+no proxy
+
+
+[Guia Steps]
+$1
+Name: 2015.cbv.com.br
+URL: 2015.cbv.com.br
+Timeout 35
+Required:
+Status Codes: 200, 201, 202

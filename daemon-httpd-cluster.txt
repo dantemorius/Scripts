@@ -1,0 +1,176 @@
+#!/bin/bash
+#
+# httpd-cluster        Startup script for the Apache HTTP Cluster
+#
+# chkconfig: - 85 15
+# description: The Apache HTTP Server is an efficient and extensible  \
+#              server implementing the current HTTP standards.
+# processname: httpd
+# config: /etc/httpd/conf/httpd.conf
+# config: /etc/sysconfig/httpd
+# pidfile: /var/run/httpd/httpd.pid
+# sub-daemon: /etc/init.d/httpd-local
+#
+### BEGIN INIT INFO
+# Provides: httpd
+# Required-Start: $local_fs $remote_fs $network $named
+# Required-Stop: $local_fs $remote_fs $network
+# Should-Start: distcache
+# Short-Description: start and stop Apache HTTP Server
+# Description: The Apache HTTP Server is an extensible server
+#  implementing the current HTTP standards.
+### END INIT INFO
+
+# Servidores do Cluster
+NOMEDOSERVIDOR1='CD163820-L-ULTRAFARMA-APP01'
+NOMEDOSERVIDOR2='CD163820-L-ULTRAFARMA-APP02'
+NOMEDOSERVIDOR3='CD163820-L-ULTRAFARMA-APP03'
+NOMEDOSERVIDOR4='CD163820-L-ULTRAFARMA-APP04'
+NOMEDOSERVIDOR5='CD163820-L-ULTRAFARMA-APP05'
+# Servidores do Cluster fim
+
+function OK()   {
+echo -e "httpd \\033[1;39m [ \\033[1;32mOK\\033[1;39m ]\\033[1;0m"
+                }
+
+function FALHOU()       {
+echo -e "httpd \\033[1;39m [ \\033[1;31mFALHOU\\033[1;39m ]\\033[1;0m"
+}
+
+function START(){
+
+echo -e "\\033[1;39m \\033[1;32mStarting HTTPD-CLUSTER\\033[1;39m \\033[1;0m"
+
+# START-DAEMON-CLUSTER
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR1:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR1"
+ssh $NOMEDOSERVIDOR1 "/etc/init.d/httpd-local start"
+
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR2:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR2"
+ssh $NOMEDOSERVIDOR2 "/etc/init.d/httpd-local start"
+
+echo "Servidor $NOMEDOSERVIDOR3"
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR3:/etc/httpd/conf/httpd.conf
+ssh $NOMEDOSERVIDOR3 "/etc/init.d/httpd-local start"
+
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR4:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR4"
+ssh $NOMEDOSERVIDOR4 "/etc/init.d/httpd-local start"
+
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR5:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR5"
+ssh $NOMEDOSERVIDOR5 "/etc/init.d/httpd-local start"
+
+# START-DAEMON-CLUSTER-FIM
+
+OK
+}
+
+function STOP(){
+
+
+echo -e "\\033[1;39m \\033[1;32mStopping HTTPD-CLUSTER\\033[1;39m \\033[1;0m"
+
+# STOP-DAEMON-CLUSTER
+echo "Servidor $NOMEDOSERVIDOR1"
+ssh $NOMEDOSERVIDOR1 "/etc/init.d/httpd-local stop"
+
+echo "Servidor $NOMEDOSERVIDOR2"
+ssh $NOMEDOSERVIDOR2 "/etc/init.d/httpd-local stop"
+
+echo "Servidor $NOMEDOSERVIDOR3"
+ssh $NOMEDOSERVIDOR3 "/etc/init.d/httpd-local stop"
+
+echo "Servidor $NOMEDOSERVIDOR4"
+ssh $NOMEDOSERVIDOR4 "/etc/init.d/httpd-local stop"
+
+echo "Servidor $NOMEDOSERVIDOR5"
+ssh $NOMEDOSERVIDOR5 "/etc/init.d/httpd-local stop"
+# STOP-DAEMON-CLUSTER-FIM
+
+OK
+}
+
+function RELOAD (){
+
+echo -e "\\033[1;39m \\033[1;32mReloading HTTPD-CLUSTER\\033[1;39m \\033[1;0m"
+
+# RELOAD-DAEMON-CLUSTER
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR1:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR1"
+ssh $NOMEDOSERVIDOR1 "/etc/init.d/httpd-local reload"
+
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR2:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR2"
+ssh $NOMEDOSERVIDOR2 "/etc/init.d/httpd-local reload"
+
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR3:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR3"
+ssh $NOMEDOSERVIDOR3 "/etc/init.d/httpd-local reload"
+
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR4:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR4"
+ssh $NOMEDOSERVIDOR4 "/etc/init.d/httpd-local reload"
+
+scp -q /etc/httpd/conf/httpd.conf $NOMEDOSERVIDOR5:/etc/httpd/conf/httpd.conf
+echo "Servidor $NOMEDOSERVIDOR5"
+ssh $NOMEDOSERVIDOR5 "/etc/init.d/httpd-local reload"
+# RELOAD-DAEMON-CLUSTER-FIM
+
+OK
+}
+
+function STATUS (){
+
+echo -e "\\033[1;39m \\033[1;32mStatus HTTPD-CLUSTER\\033[1;39m \\033[1;0m"
+
+# STATUS-DAEMON-CLUSTER
+echo "Servidor $NOMEDOSERVIDOR1"
+ssh $NOMEDOSERVIDOR1 "/etc/init.d/httpd-local status"
+
+echo "Servidor $NOMEDOSERVIDOR2"
+ssh $NOMEDOSERVIDOR2 "/etc/init.d/httpd-local status"
+
+echo "Servidor $NOMEDOSERVIDOR3"
+ssh $NOMEDOSERVIDOR3 "/etc/init.d/httpd-local status"
+
+echo "Servidor $NOMEDOSERVIDOR4"
+ssh $NOMEDOSERVIDOR4 "/etc/init.d/httpd-local status"
+
+echo "Servidor $NOMEDOSERVIDOR5"
+ssh $NOMEDOSERVIDOR5 "/etc/init.d/httpd-local status"
+# STATUS-DAEMON-CLUSTER-FIM
+
+OK
+}
+
+# Comandos
+
+        case $1 in
+                start)
+                START
+                ;;
+
+                stop)
+                STOP
+                ;;
+
+                restart)
+                STOP;
+                START;
+                ;;
+
+                status)
+                STATUS
+                ;;
+
+                                reload)
+                RELOAD
+                ;;
+
+                *)
+
+                echo -e "Permited Options $0 {start|stop|status|restart|reload}"
+                ;;
+        esac

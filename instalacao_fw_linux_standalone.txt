@@ -1,0 +1,311 @@
+﻿# Liberação IP e PORTA específico
+iptables -I FORWARD -s 189.2.232.130 -p tcp --dport 3389 -j ACCEPT
+$IPTABLES -A FORWARD -s 189.2.232.130 -p tcp --dport 3389 -j ACCEPT
+
+
+# ACESSO REMOTO Exemplos
+$IPTABLES -t nat -A PREROUTING -d 177.70.121.30 -p tcp --dport 7000 -j DNAT --to 192.168.200.2:3389
+$IPTABLES -t nat -A PREROUTING -d 177.70.121.30 -p tcp --dport 7001 -j DNAT --to 192.168.200.2:3389
+
+$IPTABLES -t nat -A PREROUTING -s 200.229.233.58 -d 177.70.121.30 -p tcp --dport 7000 -j DNAT --to 192.168.200.2:3389
+$IPTABLES -t nat -A PREROUTING -s 200.229.233.58 -d 177.70.121.30 -p tcp --dport 7001 -j DNAT --to 192.168.200.2:3389
+$IPTABLES -t nat -A PREROUTING -s 179.189.224.226 -d 177.70.121.30 -p tcp --dport 7002 -j DNAT --to 192.168.200.2:3389
+
+
+Troca de chaves entre servidores
+
+Deve ser feito em ambos os servidores.
+
+yum install openssh-clients.x86_64 wget -y
+ssh-keygen -t rsa
+ssh-copy-id root@<servidor>
+
+#!/bin/bash
+
+###########################
+#    ATIVACAO FIREWALL    #
+# Data:  26/06/2014       #
+# Autor: Leonardo Araujo  #
+###########################
+
+
+# ALERTA DE AJUSTE INICIAL
+
+clear
+echo ""
+echo ""
+echo "
+ __  __       ______ _____ _____  ________          __     _      _      
+|  \/  |  _  |  ____|_   _|  __ \|  ____\ \        / /\   | |    | |     
+| \  / | (_) | |__    | | | |__) | |__   \ \  /\  / /  \  | |    | |     
+| |\/| |     |  __|   | | |  _  /|  __|   \ \/  \/ / /\ \ | |    | |     
+| |  | |  _  | |     _| |_| | \ \| |____   \  /\  / ____ \| |____| |____ 
+|_|  |_| (_) |_|    |_____|_|  \_\______|   \/  \/_/    \_\______|______|
+                                                                       
+"
+echo ""
+echo "########################################"
+echo "#  Para utilizar este script, deve-se  #"
+echo "#  Configurar chave RSA trocada entre  #"
+echo "#        os Servidores Linux           #"
+echo "########################################"
+echo ""
+
+# DEFININDO VARIAVEIS
+
+echo -n "Informe o IP do Firewall 01: "
+read NODE1
+export NODE1
+
+echo -n "Informe o HOSTNAME do Firewall 01: "
+read NOME1
+export NOME1
+
+echo -n "Informe o RANGE de IP's BACKEND: "
+read BACKEND
+export BACKEND
+echo ""
+
+############################################################
+#############################################################
+#  AJUSTES E CONFIGURACAO DE S.O    			  ####
+#############################################################
+############################################################
+
+preparacaoSO(){
+
+
+# INSTALACAO REPOSITORIO EPEL
+#rpm -ivh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm --force
+rpm -ivh ftp://ftpcloud.mandic.com.br/Instaladores/RPM/epel-release-6-8.noarch.rpm --force
+echo ""
+echo -e "\\033[1;39m \\033[1;32mRepositorio EPEL instalado.\\033[1;39m \\033[1;0m"
+echo ""
+
+# UPDATE
+yum update -y
+echo ""
+echo -e "\\033[1;39m \\033[1;32mUpdate realizado.\\033[1;39m \\033[1;0m"
+echo ""
+
+# INSTALACAO DE PACOTES
+yum install ipvsadm perl-Net-IP perl-IO-Socket-INET6 perl-Socket6 heartbeat perl-Authen-Radius perl-MailTools perl-Net-DNS perl-Net-IMAP-Simple perl-Net-IMAP-Simple-SSL perl-POP3Client perl-libwww-perl perl-Net-SSLeay perl-Crypt-SSLeay.x86_64 perl-LWP-Authen-Negotiate.noarch perl-Test-Mock-LWP.noarch openssh-clients.x86_64 rsync.x86_64 wget.x86_64 vim-X11.x86_64 vim-enhanced.x86_64 mlocate.x86_64 nc.x86_64 tcpdump telnet heartbeat sshpass nc.x86_64 pwgen.x86_64 screen -y
+
+chkconfig heartbeat on
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mPacotes necessarios instalados.\\033[1;39m \\033[1;0m"
+echo ""
+
+# CONFIGURANDO BASHRC
+wget ftp://ftpcloud.mandic.com.br/Scripts/Linux/bashrc && yes | mv bashrc /root/.bashrc
+
+# CONFIG SELINUX
+sed -i 's/=permissive/=disabled/' /etc/sysconfig/selinux
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mselinux ajustado\\033[1;39m \\033[1;0m"
+echo ""
+
+# CONFIG SYSCTL.CONF
+sed -i 's/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/' /etc/sysctl.conf
+echo "" >> /etc/sysctl.conf
+echo "# CONFIG para NAT e Heartbeat" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.send_redirects = 0"  >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.send_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.default.accept_redirects = 0" >> /etc/sysctl.conf
+echo "net.ipv4.conf.all.accept_redirects = 0" >> /etc/sysctl.conf
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32msysctl ajustado.\\033[1;39m \\033[1;0m"
+echo ""
+
+# DESABILITANDO IPTABLES
+/etc/init.d/iptables stop
+chkconfig iptables off
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mIptables desabilitado.\\033[1;39m \\033[1;0m"
+echo ""
+
+# ATIVANDO O RSYSLOG
+/etc/init.d/rsyslog start
+chkconfig rsyslog on
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mRsyslog Iniciado.\\033[1;39m \\033[1;0m"
+echo ""
+
+# BAIXANDO ARQUIVOS CONFIG
+sshpass -p'#!cl0ud#!' scp -o StrictHostKeyChecking=no root@187.33.3.137:/root/firewall/firewall /etc/init.d/
+chmod +x /etc/init.d/firewall
+chkconfig firewall on
+
+sshpass -p'#!cl0ud#!' scp -o StrictHostKeyChecking=no root@187.33.3.137:/root/firewall/ldirectord-1.0.4-1.el6.x86_64.rpm /root/
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mArquivos de Configuracao OK.\\033[1;39m \\033[1;0m"
+echo ""
+
+# INSTALANDO O LDIRECTORD
+rpm -ivh /root/ldirectord-1.0.4-1.el6.x86_64.rpm
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mLDirectord Instalado.\\033[1;39m \\033[1;0m"
+echo ""
+
+# DEFININDO O HOSTNAME
+sed -i 's/HOSTNAME=localhost.localdomain/HOSTNAME='"$NOME1"'/' /etc/sysconfig/network
+echo $NOME1 > /etc/hostname
+echo $NODE1 $NOME1 >> /etc/hosts
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mHostname Ajustado.\\033[1;39m \\033[1;0m"
+echo ""
+
+}
+
+
+###########################################################
+############################################################
+#  AJUSTES DE REGRAS DE FIREWALL			 ####
+############################################################
+###########################################################
+
+firewall() {
+
+# DEFININDO IP's DOS NÃ“S SCRIPT FIREWALL
+sed -i 's/IPBACKEND/'"$BACKEND\/24"'/' /etc/init.d/firewall
+sed -i 's/NODE1/'"$NODE1"'/' /etc/init.d/firewall
+sed -i 's/NOME1/'"$NOME1"'/' /etc/init.d/firewall
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mScript de Firewall Ajustado.\\033[1;39m \\033[1;0m"
+echo ""
+
+
+#  GERA REGRAS NAT PARA ACESSO REMOTO  #
+
+ARQNAT="/tmp/NAT.txt"
+
+echo "###############################################"
+echo "# CRIANDO REGRAS DE NAT PARA ACESSO REMOTO    #"
+echo "###############################################"
+echo ""
+echo -n "Informe o VIP de Origem: "
+read VIP
+export VIP
+
+echo -n "Informe a quantidade de Servidores Remotos: " 
+read NUM_SERVERS
+COUNT=0
+CONT=$(( $COUNT + 1 ))
+
+echo -n "Informe a Porta Destino... ex.: (22 ou 3389): "
+read PORTADEST
+export PORTADEST
+
+PORTAORI=6999
+CONT_PORT=$(( $PORTAORI + 1 ))
+
+while [[ $NUM_SERVERS -ge $CONT ]] ; do
+	echo -n "Informe o IP Backend do Server $CONT: " 
+	read SERVER
+	echo '$IPTABLES' "-t nat -A PREROUTING -d $VIP -p tcp --dport $CONT_PORT -j DNAT --to $SERVER:$PORTADEST" >> $ARQNAT
+	CONT=$(( $CONT + 1 ))
+	CONT_PORT=$(( $CONT_PORT + 1 ))
+done
+
+REGRAS=`cat $ARQNAT`
+sed -i '/# ACESSO REMOTO/ r '"$ARQNAT"'' /etc/init.d/firewall
+rm -f $ARQNAT
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mRegras para ACESSO REMOTO criadas.\\033[1;39m \\033[1;0m"
+echo ""
+
+
+
+#  GERA REGRAS NAT PARA ZABBIX  #
+
+esta parada de colação é paga né
+
+ARQNAT="/tmp/NAT.txt"
+
+echo "#####################################################"
+echo "#  CRIANDO REGRAS DE NAT PARA MONITORAMENTO ZABBIX  #"
+echo "#####################################################"
+echo ""
+echo -n "Informe o VIP de Origem: "
+read VIP
+export VIP
+
+echo -n "Informe a quantidade de Servidores Remotos: " 
+read NUM_SERVERS
+COUNT=0
+CONT=$(( $COUNT + 1 ))
+
+PORTAORI=7999
+CONT_PORT=$(( $PORTAORI + 1 ))
+
+while [[ $NUM_SERVERS -ge $CONT ]] ; do
+	echo -n "Informe o IP Backend do Server $CONT: " 
+	read SERVER
+	echo '$IPTABLES' "-t nat -A PREROUTING -d $VIP -p tcp --dport $CONT_PORT -j DNAT --to $SERVER:10052"  >> $ARQNAT
+	CONT=$(( $CONT + 1 ))
+	CONT_PORT=$(( $CONT_PORT + 1 ))
+done
+echo '$IPTABLES' "-t nat -A POSTROUTING -s $BACKEND/24 -d noc.mandic.net.br -p tcp --dport 10052 -j SNAT --to $VIP" >> $ARQNAT
+REGRAS=`cat $ARQNAT`
+sed -i '	/# ZABBIX/ r '"$ARQNAT"'' /etc/init.d/firewall
+rm -f $ARQNAT
+
+echo ""
+echo -e "\\033[1;39m \\033[1;32mRegras para Monitoramento Zabbix criadas.\\033[1;39m \\033[1;0m"
+echo ""
+
+}
+
+
+################################
+#################################
+# REINICIALIZACAO DO SERVIDOR ####
+#################################
+################################
+
+
+reinicializacao() {
+echo -n "Reiniciar o Servidor para Aplicar os Updates e Configuracoes? [ y | n ]:  "
+read OPCAO
+
+case $OPCAO in
+	y)
+	reiniciar
+	;;
+	n)
+	exit
+	;;
+	*)
+	reinicializacao
+	;;
+	esac
+}
+
+reiniciar()
+{
+/sbin/reboot
+}
+
+
+
+#################################
+#################################
+# CHAMADA DE FUNÇÕES	     ####
+#################################
+#################################
+
+preparacaoSO
+ipvip
+gateway
+firewall
+reinicializacao

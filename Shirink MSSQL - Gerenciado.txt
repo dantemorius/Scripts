@@ -1,0 +1,6 @@
+USE [twm_manetoni]
+GO
+DBCC SHRINKFILE(twm_manetoni_Log, 0)
+BACKUP LOG twm_manetoni TO DISK='NUL'
+DBCC SHRINKFILE(twm_manetoni_Log, 0, TRUNCATEONLY)
+GO

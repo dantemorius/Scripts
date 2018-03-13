@@ -1,0 +1,64 @@
+TRELLO > CONTRATO > ET > Contrato x ET 
+
+--
+
+ESCOPO DO PROJETO em VISIO (Versão VSD)
+E o arquivo com Extensão do visio.
+
+--
+
+Fechar p pa antes do GO LOVE*
+PA MICROSOFT 
+177.154.128.122
+PA LINUX
+177.70.100.5
+
+--
+
+Acessos 
+RDP:  
+Hostname IP NAT
+Fornax 10.217.0.32 177.70.120.132:7018
+Orion 10.217.0.31 
+177.70.120.132:7017
+Crater 10.217.0.30 177.70.120.132:7016
+Dorado 10.217.0.29 177.70.120.132:7015
+Circinus 10.217.0.25 177.70.120.132:7012
+Chamaeleon 10.217.0.24 177.70.120.132:7011
+Aries 10.217.0.23 177.70.120.132:7010
+Corvus 10.217.0.13 177.70.120.132:7009
+Cygnus 10.217.0.12 177.70.120.132:7008
+Cetus 10.217.0.11 177.70.120.132:7007
+Cepheus 10.217.0.10 177.70.120.132:7006
+Centaurus 10.217.0.9 177.70.120.132:7005
+Cassiopeia 10.217.0.8 177.70.120.132:7004
+Aquila 10.217.0.7 177.70.120.132:7003
+Aquarius 10.217.0.6 177.70.120.132:7002
+AD02 10.217.0.5 177.70.120.132:7001
+AD01 10.217.0.4 177.70.120.132:7000
+ 
+Senhas: Verificar no Pass
+
+
+--
+
+RunBook
+
+--
+
+Política de Monitoramento e Backup
+
+--
+
+SCRIPT RB
+
+--
+
+TODAS AS SENHAS NO PASS
+seja ela de acesso ao servidor ou de administração dos serviços.
+
+--
+
+
+
+--

@@ -1,0 +1,22 @@
+Configurando SNMP como ReadOnly
+
+# Instalando SNMP
+yum -y install net-snmp net-snmp-utils
+
+cd 
+
+# Criando usuário ReadOnly
+# net-snmp-config --create-snmpv3-user -ro -a SENHA USUARIO
+net-snmp-config --create-snmpv3-user -ro -a Pz6N2ZIf w3haus-snmp
+
+# Liberando portas SNMP
+$IPTABLES -A INPUT -p udp -s 177.99.216.240/29 --dport 161 -j ACCEPT
+$IPTABLES -A INPUT -p udp -s 201.22.213.51 --dport 161 -j ACCEPT
+
+$IPTABLES -A FORWARD -p udp -s 177.99.216.240/29 --dport 161 -j ACCEPT
+$IPTABLES -A FORWARD -p udp -s 201.22.213.51 --dport 161 -j ACCEPT
+
+
+# Conclusão
+/etc/init.d/snmpd restart
+chkconfig snmpd on

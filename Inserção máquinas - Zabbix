@@ -1,0 +1,41 @@
+Cadastramento do Zabbix:
+
+Firewall:
+- Cloud Backup
+- Firewall cloud gerenciado
+- Verifica hostname (Incluir link do Runbook do projeto)
+- Pega Attack
+
+Mysql:
+Template Cloud Backup - Linux - OBM	
+Template Mysql Linux	
+Template OS Linux Cloud Gerenciado Mandic - Data - sem rede e iptables	
+Template Verifica Hostname
+
+
+CD.139706
+187.191.98.109
+187.191.98.110
+
+CD139706-linux-centos-6-64b-base-444
+Firewall 01
+Frontend: 187.191.99.98
+Backend: 10.0.40.2
+Usuário: root
+Senha: 0R%8219t
+
+CD139706-linux-centos-6-64b-base-445
+Firewall 02
+Frontend: 187.191.99.99
+Backend: 10.0.40.3
+Usuário: root
+Senha: 0R%8219t
+
+- Instalado Agente
+- Configurado Monitoramento
+- Instalar Backup
+- Configurar Backup
+Inserir Monitoramento de Backup
+
+
+

@@ -1,0 +1,28 @@
+#/bin/bash
+echo "Digite a URL"
+
+read URL
+
+VAL_URL=`curl -Is $URL | grep HTTP | awk '{print $2}'`
+
+if [[ $VAL_URL -eq 200 ]]; then
+        echo "$URL está acessível"
+                elif [[ $VAL_URL -eq 301 ]];
+                    then echo "Erro $VAL_URL - $URL foi modificada ou movida para outro conteúdo"
+                elif [[ $VAL_URL -eq 400 ]];
+                    then echo "Erro $VAL_URL - $URL apresenta sintaxe incorreta"
+                elif [[ $VAL_URL -eq 401 ]];
+                    then echo "Erro $VAL_URL - $URL: Acesso Negado - Permissão para acesso incorreta"
+                elif [[ $VAL_URL -eq 404 ]];
+                    then echo "Erro $VAL_URL - $URL: Não encontrada"
+                elif [[ $VAL_URL -eq 405 ]];
+                    then echo "Erro $VAL_URL - $URL: Requisição não permitida"
+                elif [[ $VAL_URL -eq 407 ]];
+                    then echo "Erro $VAL_URL - $URL: URL necessita autenticação via proxy"
+                elif [[ $VAL_URL -eq 408 ]];
+                    then echo "Erro $VAL_URL - $URL: Timeout"
+                elif [[ $VAL_URL -eq 500 ]];
+                    then echo "Erro $VAL_URL - $URL Erro no servidor. Verifique disponibilidade do serviço WEB"
+                else
+                        echo "$URL: URL Inválida"
+fi

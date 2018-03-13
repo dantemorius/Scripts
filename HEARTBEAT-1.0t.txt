@@ -1,0 +1,179 @@
+Configurando FailOver (HA - Heart Beat).
+
+Verificar se é necessário adicionar configuração de placa de rede manualmente (VLAN):
+
+yum update -y
+
+yum install openssh-clients.x86_64
+
+~]# getenforce 0
+
+
+~]# cd /etc/sysconfig/network-scripts/; echo 'DEVICE="eth1"
+NM_CONTROLLED="no"
+ONBOOT="yes"
+BOOTPROTO="static"
+IPADDR="192.168.58.7"
+NETMASK="255.255.255.0"' > ifcfg-eth1; service network restart; ifconfig
+
+Ajuste primeiramente o nome dos servidores e arquivo de hosts:
+
+Ex.: <IP do servidor Master> <Nome do servidor Master>
+	 <IP do servidor Slave> <Nome do servidor Slave>
+
+~]# vi /etc/hosts
+192.168.58.7    projetorj-01
+192.168.58.8    projetorj-02
+
+Aqui deve ser colocado o nome do servidor local no caso "projetorj-01"
+
+~]# vi /etc/sysconfig/network
+NETWORKING=yes
+HOSTNAME=projetorj-01
+
+Reboot no servidor para aplicar as configurações.
+
+=========
+
+OBS.: Chave Privada DEVE SER FEITO SOMENTE NO SERVIDOR PRINCIPAL e depois copiado o arquivo para o SLAVE!
+
+Criar Chave Privada com o SSH-Keygen RSA que será usado no arquivo de chaveamento do HA.
+
+SSH-Keygen irá gerar a senha, segue os passos do processo:
+
+Criar e dar permissão ao Diretório que irá gerar os arquivos com a senha:
+
+~]# mkdir ~/.ssh
+~]# chmod 700 ~/.ssh
+
+Executando o gerador de senha:
+
+~]# ssh-keygen -t rsa
+
+Generating public/private rsa key pair.
+Enter file in which to save the key (/root/.ssh/id_rsa): /root/.ssh/id_rsa
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /root/.ssh/id_rsa.
+Your public key has been saved in /root/.ssh/id_rsa.pub.
+The key fingerprint is:
+1e:ae:e8:7f:e5:7f:47:52:86:60:b4:32:04:5b:75:a7 root@projetorj-01
+The key's randomart image is:
++--[ RSA 2048]----+
+|        ..ooo . .|
+|         +  oo o |
+|        . o...E. |
+|           o  . o|
+|        S      o |
+|       o ..   . .|
+|        oo     o |
+|     . .. .   . .|
+|   .o.o.   ... . |
++-----------------+
+
+Note que pede o caminho que irá gerar o arquivo "/root/.ssh/id_rsa", e colocamos justamente neste caminho.
+
+Gerando o arquivo da senha "authorized_keys":
+
+COMANDO: ssh-copy-id -i nome do servidor
+NOTA: Ele irá pedir a senha do servidor.
+
+~]# ssh-copy-id -i CD122757-FW01
+The authenticity of host 'projetorj-01 (192.168.58.7)' can't be established.
+RSA key fingerprint is 9e:00:5d:d6:10:d2:bb:41:ef:c7:06:e2:13:2c:cc:69.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added 'projetorj-01,192.168.58.7' (RSA) to the list of known hosts.
+root@projetorj-01's password:
+Now try logging into the machine, with "ssh 'projetorj-01'", and check in:
+
+  .ssh/authorized_keys
+
+to make sure we haven't added extra keys that you weren't expecting.
+
+Agora basta copiar o conteúdo do arquivo "authorized_keys" e utilizar como senha do HA - "/etc/ha.d/authkeys"
+
+=========================
+
+OBS.: PROCESSO DE INSTALAÇÃO DEVE SER EXECUTADO EM AMBOS OS SERVIDORES! e deve se atentar que parte dos arquivos configurados são iguais e outros não.
+
+Instalando o Heart Beat:
+
+~]# cd home/
+
+~]# mkdir download
+
+~]# cd download/
+
+~]# wget http://hg.linux-ha.org/dev/archive/STABLE-3.0.4.tar.bz2
+
+~]# tar -vxjf STABLE-3.0.4.tar.bz2
+
+~]# cd ..
+
+~]# rm -rf download/
+
+~]# rpm -Uvh http://download.fedora.redhat.com/pub/epel/6/x86_64/epel-release-6-5.noarch.rpm
+
+~]# cat /etc/ipsec.conf
+
+~]# yum install heartbeat.x86_64
+
+Este arquivo Deve ser identico nos servidores de HA:
+
+~]# vi /etc/ha.d/ha.cf
+
+#---INICIO---#
+logfile /var/log/ha-log
+#logfacility local0
+#use_logd 1
+keepalive 500ms
+deadtime 5
+#warntime 5
+udpport 694
+#initdead 120
+bcast eth0
+bcast eth1
+node projetorj-01       # HOSTNAME MASTER
+node projetorj-02       # HOSTNAME SLAVE
+auto_failback off
+#---FIM---#
+
+Neste passo irá utilizar o arquivo gerado pelo SSL-keygen.
+
+~]# vi /etc/ha.d/authkeys
+
+auth 1
+1 sha1 <SENHA>
+
+~]# chmod 600 /etc/ha.d/authkeys
+
+Configurar o VIP/caminhos dos discos a serem montados/Serviços:
+
+~]# vi /etc/ha.d/haresources
+
+projetorj-01 IPaddr::187.33.0.55
+#Podemos adicionar também serviços para serem iniciados quando o host 'slave' assumir as tarefas, ou seja, quando o master estiver indisponível, queremos que o host 'slave' assuma as configurações de VPN por exemplo, é só especificar no arquivo acima, por exemplo
+#proxy-master 10.106.0.10 openvpn
+
+
+Criar regras de NAT:
+
+
+
+
+FONTE:
+
+Configuração OpenSSH/Keys:
+http://www.thegeekstuff.com/2008/11/3-steps-to-perform-ssh-login-without-password-using-ssh-keygen-ssh-copy-id/
+http://www.ece.uci.edu/~chou/ssh-key.html
+https://help.ubuntu.com/community/SSH/OpenSSH/Keys
+https://help.github.com/articles/generating-ssh-keys/
+https://fedoraproject.org/wiki/Cryptography
+http://www.firedaemon.com/blog/passwordless-root-ssh-public-key-authentication-on-centos-6
+
+HA - Heart Beat/DRDB
+
+https://wiki.archlinux.org/index.php/Simple_IP_Failover_with_Heartbeat
+http://www.diorio.com.br/docs/linux_centos/6/install_heartbeat_drbd_centos.php
+http://pt.slideshare.net/fred_m/alta-disponibilidade-em-linux-com-heartbeat-e-drbd
+http://www.vivaolinux.com.br/artigo/Alta-disponibilidade-CentOS-6-configurando-os-pacotes-DRBD-com-gfs2-parte-1

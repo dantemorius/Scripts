@@ -1,0 +1,34 @@
+The Access Server has been successfully installed in /usr/local/openvpn_as
+Configuration log file has been written to /usr/local/openvpn_as/init.log
+Please enter "passwd openvpn" to set the initial
+administrative password, then login as "openvpn" to continue
+configuration here: https://177.70.121.237:943/admin
+To reconfigure manually, use the /usr/local/openvpn_as/bin/ovpn-init tool.
+
+Access Server web UIs are available here:
+Admin  UI: https://177.70.121.237:943/admin
+Client UI: https://177.70.121.237:943/
+
+
+Access Server web UIs are available here:
+
+Admin UI: https://177.70.121.237:943/admin
+Client UI: https://177.70.121.237:943/
+
+U: openvpn
+S: qLma#r2$L$x*
+
+
+
+
+
+Usuário: guanxibr\administrator
+Senha: Br@sil2015@!
+ 
+Usuário: guanxibr\teste
+Senha: T3ste2015
+
+IP: 177.70.121.237 
+177.70.121.237:3389 => 10.0.0.2:3389
+
+CD.162859 - GUANXI BRASIL REPRESENTACOES E CONSULTORIA EIRELI

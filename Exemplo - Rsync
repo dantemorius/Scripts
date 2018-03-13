@@ -1,0 +1,71 @@
+# You can find an example in  /usr/share/doc/drbd.../drbd.conf.example
+
+#include "drbd.d/global_common.conf";
+#include "drbd.d/*.res";
+
+global {
+    usage-count no;
+}
+resource r0 {
+  protocol C;
+  startup {
+    wfc-timeout  30;
+    degr-wfc-timeout 120;
+ }
+  net {
+    # the encryption part can be omitted when using a dedicated link for DRBD only:
+    # cram-hmac-alg sha1;
+    # shared-secret anysecrethere123;
+    #allow-two-primaries;
+  }
+  disk {
+    on-io-error   detach;
+  }
+  syncer {
+    rate 120M;
+  }
+  on CD163339-L-CBV-MYSQL01{
+    device     /dev/drbd0;
+    disk       /dev/vdb1;
+    address    10.0.27.6:7788;
+    meta-disk  internal;
+  }
+  on CD163339-L-CBV-MYSQL02{
+    device     /dev/drbd0;
+    disk       /dev/vdb1;
+    address    10.0.27.7:7788;
+    meta-disk  internal;
+  }
+}
+resource r1 {
+  protocol C;
+  startup {
+    wfc-timeout  30;
+    degr-wfc-timeout 120;
+ }
+  net {
+    # the encryption part can be omitted when using a dedicated link for DRBD only:
+    # cram-hmac-alg sha1;
+    # shared-secret anysecrethere123;
+    #allow-two-primaries;
+  }
+  disk {
+    on-io-error   detach;
+  }
+  syncer {
+    rate 120M;
+  }
+  on CD163339-L-CBV-MYSQL01{
+    device     /dev/drbd1;
+    disk       /dev/vdc1;
+    address    10.0.27.6:7789;
+    meta-disk  internal;
+  }
+  on CD163339-L-CBV-MYSQL02{
+    device     /dev/drbd1;
+    disk       /dev/vdc1 ;
+    address    10.0.27.7:7789;
+    meta-disk  internal;
+  }
+}
+

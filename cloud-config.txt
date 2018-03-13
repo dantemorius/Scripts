@@ -1,0 +1,12 @@
+#cloud-config
+hostname: core01
+coreos:
+ update:
+  reboot-strategy: off
+users:
+- name: nitish
+  passwd: $1$yxV9YDKT$s.fAj5dlFyrPwrH0xAQJy/
+  groups:
+  - sudo
+  - docker
+  

@@ -1,0 +1,77 @@
+Treinamento IPtables
+
+Frontend Primário: 187.33.0.80
+Backend Primário: 10.0.0.9
+Backend Secundário: 10.0.0.10
+
+Pacote de módulos Netfilter (netfilter.org) do qual faz parte o iptables.
+
+Procurar: Módulo iptables para filtrar peer-to-peer (QoS);
+
+Tabelas:
+Filter: Onde são inseridas as regras por Padrão
+NAT: Tradução de endereço
+Mangle: alteração de pacote (TTL, cabeçalho, tamanho)
+Raw: checada antes do conntrack (antes de qualquer ação do kernel). Usada muito para ataques.
+
+================================================================================================
+**Tabela Filter**
+Chain:
+Input => [] : Consultado para pacotes que chegam na própria máquina
+
+<= [] Output: Consultado para pacotes que saem da própria máquina
+
+[  ] < = > Forward: Consultado para pacotes que são redirecionados para outra interface de rede ou outra estação.
+Utilizada para mascaramento ou quando o servidor é utilizando como roteador/firewall/gateway da rede.
+
+-t: define tabela.
+-A: Regra no Final
+-I: Regra no início
+-P -> troca a política padrão da Chain
+-nL --line-numbers (numerar a linha da regra).
+================================================================================================
+**Tabela NAT**
+Chains:
+PREROUTING: Consultado quando os pacotes precisam ser redirecionados logo que chegam (DNAT).
+POSTROUTING: Consultado quando os pacotes precisam ser modificados após o tratamento do pacote (SNAT).
+OUTPUT: Consultado para saida de um pacote de alguma máquina que esteja atrás do Firewall.
+================================================================================================
+**Tabela MANGLE**
+Chain:
+PREROUTING: iptables -t mangle -A PREROUTING -i eth1 -
+Output
+================================================================================================
+**Tabela RAW**
+PREROUTING:
+Output
+================================================================================================
+Firewall StateLess: Não entende o estado da conexão.
+
+Firewall StateFull: Gerenciam a conexão - Vincula a conexão e seus dados em uma tabela (ConnTrack)
+e vincula os pacotes à aquelas conexões para não fazer releitura de todas as regras. (ESTABLISHED).
+
+Conntrack Tabelas de conexões tem limites de conexões. (64000 registros por Default).
+NOTRACK => Parâmetro para não registrar o tráfego na tabela Conntrack
+================================================================================================
+Ações:
+DROP -> descarta o pacote
+REJECT -> Rejeita, porém retorna aviso pra máquina que enviou o pacote.
+ACCEPT
+LOG -> Gera log no SYSLOG e segue checando as demais regras, mesmo que dê match com alguma delas.
+MASQUERADE
+DNAT
+SNAT
+================================================================================================
+Flush nats: iptables -F -t nat
+Trocar política padrão: iptables -P FORWARD DROP
+
+tcpdump -i eth1 -n icmp
+
+iptables -A FORWARD -s 10.0.0.0/24 -j ACCEPT -> Interface de Backend do Firewall
+iptables -A FORWARD -d 10.0.0.0/24 -j ACCEPT -> Interface de Frontend
+
+iptables -A POSTROUTING -t nat -s 10.0.0.10 -j SNAT --to-source 187.33.0.80
+iptables -A PREROUTING -t nat -d 187.33.0.80 -j DNAT --to 10.0.0.10
+
+iptables -I FORWARD -p tcp -s 177.70.100.56 --dport 80 -j ACCEPT
+iptables -I FORWARD 2 -p tcp --dport 80 -j DROP

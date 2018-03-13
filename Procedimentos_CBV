@@ -1,0 +1,47 @@
+CD.163339
+MSQL01 - 187.191.98.237:7002
+j#OI64BJY9U5W!$TKSGo
+
+
+Sincronização dos dados de FTP:
+rsync -avz --rsh='ssh -p22' root@50.28.10.35:/home/cbvcom/public_html/* /aplicacao/
+
+Dump das bases de dados (Server 50.28.10.35 - Password: @Careca007 ):
+cd mysql_dump/
+for i in `cat dbs.txt`; do mysqldump $i > $i.sql; done
+scp -r root@50.28.10.35:/root/mysql_dump /mysql_dump
+
+Grant Privileges AGAIN {
+GRANT ALL PRIVILEGES ON cbvcom_apps_cbs.* TO 'cbvcom_apps_cbs'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_apps_liganacional.* TO 'cbvcom_apps_ln'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_apps_testes.* TO 'cbvcom_apps_tst'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_cbbvp.* TO 'cbvcom_cbbvp'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_cbs.* TO 'cbvcom_cbs'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_cbv.* TO 'cbvcom_cbv'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_grandprix.* TO 'cbvcom_grandprix'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_liganacional.* TO 'cbvcom_liganac'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_mundial.* TO 'cbvcom_mundial'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_sulAmasc.* TO 'cbvcom_sulAmasc'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_superliga.* TO 'cbvcom_superliga'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_superliga14_15.* TO 'cbvcom_sl-14-15'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_superliga_15_16.* TO 'cbvcom_sl-15_16'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_superliga_votacao.* TO 'cbvcom_sl_vota'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_superligab.* TO 'cbvcom_sligab'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_viva.* TO 'cbvcom_viva'@'%' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON cbvcom_voleimaster.* TO 'cbvcom_vmaster'@'%' WITH GRANT OPTION;
+}
+
+Aplicação de permissões {
+chmod 775 /tmp
+chmod -R 775 ./cache
+chmod 775 -R ./tmp
+chmod 775 -R ./images
+chmod 775 -R ./plugins
+chmod 775 -R ./media
+
+Realizar Backup dos arquivos de configuração:
+locate configuration.php | egrep */*/configuration.php | egrep -v "components|installation" > configs.txt
+
+Ler lista de arquivos e copiar os arquivos para uma pasta de backup:
+for i in `cat configs.txt`; do cp -r --parents $i . ; done
+}

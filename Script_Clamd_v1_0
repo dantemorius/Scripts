@@ -1,0 +1,68 @@
+instalacao_clamav {
+yum install -y clamav*
+
+#Criando copia de segurança do arquivo de configuração:
+cp /etc/freshclam.conf /etc/freshclam.conf_original
+
+################################
+####Configurando o FreshClam####
+################################
+
+#Criando os arquivos de configuração e setando as permissões
+touch /var/log/freshclam.log
+chmod 755 /var/log/freshclam.log
+chown clamav:clamav /var/log/freshclam.log
+
+##Descomentando as linhas principais do exemplo:
+sed -i 's/#PidFile/PidFile/g' /etc/freshclam.conf
+sed -i 's/#DatabaseDirectory/DatabaseDirectory/g' /etc/freshclam.conf
+sed -i 's/#DNSDatabaseInfo/DNSDatabaseInfo/g' /etc/freshclam.conf
+sed -i 's/#UpdateLogFile/UpdateLogFile/g' /etc/freshclam.conf
+sed -i 's/#PidFile/PidFile/g' /etc/freshclam.conf
+
+#Remover tag de exemplo:
+sed -i 's/Example//g' /etc/freshclam.conf
+
+#Alterar tempo de checagem de 24 vezes por dia para 1 vez:
+sed -i 's/Checks 24/Checks 1/g' /etc/freshclam.conf
+
+chkconfig clamav-milter on
+chkconfig clamd on
+
+################################
+####Configurando o Clamd########
+################################
+
+##Backup do arquivo de configuração
+cp /etc/clamd.conf /etc/clamd.conf_original
+
+
+##Descomentando as linhas necessárias:
+sed -i 's/#PidFile/PidFile/g' /etc/clamd.conf
+sed -i 's/#DatabaseDirectory/DatabaseDirectory/g' /etc/clamd.conf
+sed -i 's/\/var\/lib\/clamav/\/var\/clamav/g' /etc/clamd.conf
+sed -i 's/#DNSDatabaseInfo/DNSDatabaseInfo/g' /etc/clamd.conf
+sed -i 's/#UpdateLogFile/UpdateLogFile/g' /etc/clamd.conf
+sed -i 's/#PidFile/PidFile/g' /etc/clamd.conf
+sed -i 's/#LocalSocket/LocalSocket/g' /etc/clamd.conf
+
+#Remover tag de exemplo:
+sed -i 's/Example//g' /etc/clamd.conf
+
+################################
+#######Testando o Clamav########
+################################
+cd /var/www/html
+wget http://www.eicar.org/download/eicar.com
+clamscan -ri .
+
+
+#Incluindo tarefa no cron para gerar relatório diário de varredura.
+##O Script contempla também um jobrotate, mantendo somente os relatórios dos últimos 7 dias.
+crontab -l > /var/crontab/relatorios/crons
+echo "* 01 * * * sh /var/crontab/relatorios/relatorio_crontab.sh" >> /var/crontab/relatorios/crons
+crontab /var/crontab/relatorios/crons
+rm -rf /var/crontab/relatorios/crons
+
+
+}

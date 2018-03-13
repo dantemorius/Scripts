@@ -1,0 +1,221 @@
+#!/bin/bash 
+# Firewall      Start iptables firewall
+#
+# chkconfig: 2345 08 92
+# description:  Starts, stops and saves iptables firewall
+#
+# config: /etc/sysconfig/iptables
+# config: /etc/sysconfig/iptables-config
+#
+### BEGIN INIT INFO
+# Provides: iptables
+# Required-Start:
+# Required-Stop:
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: start and stop iptables firewall
+# Description: Start, stop and save iptables firewall
+### END INIT INFO
+##############################################
+# 
+# SCRIPT DE FIREWALL
+###############################################
+REDEBACKEND='IPBACKEND'
+IPTABLES=`which iptables`
+IPCOREBKP='177.70.104.184,177.70.104.194,177.70.104.204,177.70.104.205,187.191.96.5,187.191.96.151,187.191.96.202,187.191.96.203,187.191.98.5,187.191.98.30,187.191.98.31,187.191.98.35,187.191.101.186,187.191.101.189,187.191.101.190,187.191.125.130,187.191.125.131,187.191.125.132,187.191.125.133'
+
+function OK()   {
+echo -e "Firewall \\033[1;39m [ \\033[1;32mOK\\033[1;39m ]\\033[1;0m"
+                }
+
+function FALHOU()       {
+echo -e "Firewall \\033[1;39m [ \\033[1;31mFALHOU\\033[1;39m ]\\033[1;0m"
+}
+
+function STOP(){
+
+###############################################################
+# Flushing filter and nat tables                              #
+###############################################################
+$IPTABLES -F
+$IPTABLES -P INPUT ACCEPT
+$IPTABLES -P FORWARD ACCEPT
+$IPTABLES -P OUTPUT ACCEPT
+$IPTABLES -X
+$IPTABLES -F -t nat
+$IPTABLES -F -t raw
+
+OK
+}
+
+function START(){
+###############################################################
+# Default Policies                                            #
+###############################################################
+$IPTABLES -P INPUT DROP
+$IPTABLES -P FORWARD DROP
+$IPTABLES -P OUTPUT ACCEPT
+$IPTABLES -P POSTROUTING ACCEPT -t nat
+$IPTABLES -P PREROUTING ACCEPT -t nat
+$IPTABLES -P OUTPUT ACCEPT -t nat
+
+modprobe ip_conntrack_ftp
+##############################################################
+# REGRAS de INPUT -                                          #
+##############################################################
+$IPTABLES -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+##CLUSTER
+$IPTABLES -A INPUT -s NODE1 -j ACCEPT
+$IPTABLES -A INPUT -s NODE2 -j ACCEPT
+
+#Zabbix
+$IPTABLES -A INPUT -s noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s p1.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s p2.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s p3.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s p4.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s p5.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s p6.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s p7.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s pnoc-rj.mandic.net.br -j ACCEPT
+$IPTABLES -A INPUT -s pnoc.mandic.net.br -j ACCEPT
+
+## Rede local
+$IPTABLES -A INPUT -s $REDEBACKEND -j ACCEPT
+
+### SSH Access###
+$IPTABLES -A INPUT -s 177.70.100.5 -p tcp --dport 22 -j ACCEPT
+
+### Services Access
+$IPTABLES -A INPUT -p udp -s 177.70.106.7 --dport 514 -j ACCEPT
+$IPTABLES -A INPUT -p tcp -m multiport --dport 10050:10052 -j ACCEPT
+$IPTABLES -A INPUT -p udp --dport 694 -j ACCEPT
+
+##############################################################
+# REGRAS APPASSURE/RAPIDRECOVERY - BACKUP MANDIC             #
+##############################################################
+$IPTABLES -A INPUT -s $IPCOREBKP -p tcp -m multiport --dport 9006:9010 -j ACCEPT
+$IPTABLES -A INPUT -s $IPCOREBKP -p tcp -m multiport --dport 9100:9300 -j ACCEPT
+
+$IPTABLES -A INPUT -s 177.70.100.56 -p tcp --dport 3389 -j ACCEPT
+
+##ICMP
+$IPTABLES -A INPUT -p icmp -j ACCEPT
+
+##############################################################
+# REGRAS de FORWARD -                                        #
+##############################################################
+
+$IPTABLES -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+$IPTABLES -A FORWARD -s $REDEBACKEND -j ACCEPT
+$IPTABLES -A FORWARD -p icmp -j ACCEPT
+
+#Monitoracao ZABBIX
+$IPTABLES -A FORWARD -s noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s p1.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s p2.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s p3.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s p4.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s p5.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s p6.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s p7.noc.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s pnoc-rj.mandic.net.br -j ACCEPT
+$IPTABLES -A FORWARD -s pnoc.mandic.net.br -j ACCEPT
+
+#Gerenciamento
+$IPTABLES -A FORWARD -s 177.70.100.56 -p tcp --dport 3389 -j ACCEPT
+$IPTABLES -A FORWARD -p tcp --dport 22 -j ACCEPT
+$IPTABLES -A FORWARD -p udp -s 177.70.106.7 --dport 514 -j ACCEPT
+
+##############################################################
+# REGRAS APPASSURE/RAPIDRECOVERY - BACKUP MANDIC             #
+##############################################################
+$IPTABLES -A FORWARD -s $IPCOREBKP -m multiport --dport 9006:9010 -j ACCEPT
+$IPTABLES -A FORWARD -s $IPCOREBKP -p tcp -m multiport --dport 9100:9300 -j ACCEPT
+
+$IPTABLES -A OUTPUT -p udp -d 177.70.106.7 --dport 514 -j ACCEPT
+
+#### IPSEC ###################################################
+#$IPTABLES -A INPUT -p esp -j ACCEPT
+#$IPTABLES -A INPUT -p udp --dport 500 -j ACCEPT
+#$IPTABLES -A INPUT -p tcp --dport 500 -j ACCEPT
+#$IPTABLES -A INPUT -p udp --dport 4500 -j ACCEPT
+#$IPTABLES -A FORWARD -s $REDECLIENTE -j ACCEPT
+#$IPTABLES -A FORWARD -s $REDEBACKEND -j ACCEPT
+#$IPTABLES -A FORWARD -s $REDECLIENTE -j ACCEPT
+#$IPTABLES -t nat -A POSTROUTING -d $REDECLIENTE -j ACCEPT
+#$IPTABLES -t nat -A POSTROUTING -s $REDECLIENTE -j ACCEPT
+#$IPTABLES -A INPUT -s $IPCLIENTE -j ACCEPT
+#$IPTABLES -A FORWARD -s $IPCLIENTE -j ACCEPT
+##############################################################
+
+
+# ACESSO REMOTO
+
+# MSSQL
+
+# MYSQL
+
+# APPASSURE CONEXAO
+
+# APPASSURE TRANSFERENCIA
+
+
+### Services Access
+#NAT 1x1 Aos servidores que precisam ter IP dedicado de saida
+#MAILBOX01
+#$IPTABLES -t nat -A PREROUTING -d 177.70.120.108  -j DNAT --to 10.124.0.6
+#$IPTABLES -t nat -A POSTROUTING -s 10.124.0.6 -j SNAT --to 177.70.120.108
+
+# ZABBIX
+
+
+
+### Nat para rede backend
+$IPTABLES -t nat -A POSTROUTING -s $REDEBACKEND -o eth0 -j MASQUERADE
+
+
+OK
+
+#SINCRONIZA REGRAS COM FW2
+if [ "$(hostname)" = "NOME1" ];then
+
+        IPFW02=NODE2
+        FWFILE=/etc/init.d/firewall
+
+        nc -z -w 2 $IPFW02 22
+
+        if [ $? -eq 0 ];then
+                scp -q $FWFILE root@$IPFW02:$FWFILE
+                echo "Sincronizando regras com NOME2"
+                ssh root@$IPFW02 $FWFILE restart
+        fi
+fi
+
+
+}
+
+#
+#FW options
+#
+        case $1 in
+                start)
+                START
+                ;;
+
+                stop)
+                STOP
+                ;;
+
+                restart)
+                STOP;
+                START;
+                ;;
+
+                *)
+
+                echo -e "Tente $0 {start|stop|restart}"
+                ;;
+        esac
+

@@ -1,0 +1,104 @@
+#/bin/bash
+base(){
+
+#Listando discos
+fdisk -l | grep "Disk /" | cut -d":" -f1 | awk '{print $2}' | cut -d"/" -f3 > disklist
+disk=`cat disklist`
+
+#Listando partições
+fdisk -l | grep "/dev" | egrep -v "Disk" | awk '{print $1}' | cut -d"/" -f3 | sed s'/.$//' | uniq > partlist
+part=`cat partlist`
+
+
+##Comparando discos e partições para identificar discos sem particionamento
+echo -e "$disk\n$part" | sort | uniq -c | grep 1 | awk '{print $2}' > to_format
+
+
+yum install xfsprogs xfsdump -y
+
+}
+
+
+ler_particao(){
+
+###Criando particionamento
+for d in `cat to_format`;do
+
+clear
+
+
+echo "Informe o tipo de formatação:
+1) xfs
+2) ext3
+3) ext4
+
+"
+
+
+read opt
+export opt
+
+
+case $opt in
+1)echo $(formatacao "xfs");;
+2)echo $(formatacao "ext3");;
+3)echo $(formatacao "ext4");;
+*)echo "Digite a Opção correta (1-3):"
+ler_particao;;
+esac
+
+done
+}
+
+f_disk(){
+
+fdisk -u /dev/$1 <<EOF
+n
+p
+1
+
+
+w
+y
+EOF
+
+}
+
+
+formatacao(){
+if [ "$1" == "xfs" ]; then
+DIRFTP="/data/mysql"
+MOUNT='/dev/'"$d"'1 '"$DIRFTP"'/'"$d"'    '"$1"' defaults,noatime,nobarrier,nodiratime,logbufs=8,logbsize=256k,allocsize=64m,largeio,inode64     0       0'
+        echo $MOUNT >> /etc/fstab;
+else
+        if [ "$1" == "ext3" ]; then
+                DIRFTP=/var/www/html
+                MOUNT='/dev/'"$d"'1       '"$DIRFTP"'    '"$1"'    defaults,errors=remount-ro,barrier=0    1      1'
+                echo $MOUNT >> /etc/fstab;
+else
+        if [ "$1" == "ext4" ]; then
+                DIRFTP=/var/www/html
+                MOUNT='/dev/'"$d"'1       '"$DIRFTP"'    '"$1"'    defaults,errors=remount-ro,barrier=0    1      1'
+                echo $MOUNT >> /etc/fstab;
+        fi
+        fi
+fi
+
+echo $(f_disk "$d")
+
+mkfs.$1 -q -f /dev/"$d"1 > /dev/null 2>&1
+
+echo "
+
+Partição $d formatada com $1
+
+"
+
+sleep 3
+
+mkdir -p $DIRFTP/$d
+
+mount -t $1 /dev/"$d"1 $DIRFTP
+
+
+}

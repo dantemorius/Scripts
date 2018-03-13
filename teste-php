@@ -1,0 +1,28 @@
+yum --enablerepo=southbridge-php52 install -y make gcc gcc-c++ kernel-devel libxml2 libxml2-devel libxslt libxslt-devel openssl-devel bzip2-devel libcurl curl-devel gmp-devel libjpeg-devel libpng-devel libXpm-devel db4-devel libc-client-devel openldap-devel unixODBC-devel postgresql-devel sqlite-devel aspell-devel net-snmp-devel pcre-devel t1lib-devel.x86_64 crypt mcrypt libmcrypt libmcrypt-devel.x86_64 *crypt-devel* mcryp mysql-devel
+
+
+wget http://rpms.southbridge.ru/southbridge-rhel6-php52.rpm
+wget http://rpms.southbridge.ru/rhel6/php-5.2/x86_64/php-5.2.17-1.el6.art.x86_64.rpm
+wget http://rpms.southbridge.ru/rhel6/php-5.2/x86_64/php-cli-5.2.17-1.el6.art.x86_64.rpm
+
+rpm -ivh php-common-5.2.17-1.el6.art.x86_64.rpm
+rpm -ivh php-cli-5.2.17-1.el6.art.x86_64.rpm
+rpm -ivh php-5.2.17-1.el6.art.x86_64.rpm
+
+cd php-5.2.17
+./configure
+
+make && make install
+
+
+###########Configuração /etc/yum/conf#######
+adicionado:
+reposdir=/etc/yum.repos.d
+
+
+yum-config-manager --add-repo=http://rpms.southbridge.ru/rhel6/php-5.2/x86_64/
+
+###Criei um arquivo com os arquivos .rpm da versão desejada###
+cat repos.txt | cut -d" " -f1 | grep "5.2.17-1" > packs.txt
+cat packs.txt | sed 's/\.rpm//g' > repos.txt
+for i in `cat packs.txt`; do yum install -y $i --skip-broken;done
